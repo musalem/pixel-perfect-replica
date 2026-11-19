@@ -28,3 +28,6 @@ use the editor.
   own key and store it in Secrets.
 - **Secrets.** Lovable manages them. Do not put secret values in the repo.
 <!-- LOVABLE:END -->
+
+## Project architecture
+- Keep the Ramadan TV first release frontend-only: structured channel, program, and schedule data live separately from the interactive experience, while browser storage holds visitor preferences; this keeps demo content replaceable without introducing backend setup.
