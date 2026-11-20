@@ -248,7 +248,7 @@ function TelevisionExperience({ channelIndex, setChannelIndex }: { channelIndex:
         <div className="console-divider" />
         <div className="console-power">
           <span className="console-label">التشغيل</span>
-          <Button type="button" variant="power" size="icon" title={powered ? "إيقاف التلفزيون" : "تشغيل التلفزيون"} aria-label={powered ? "إيقاف التلفزيون" : "تشغيل التلفزيون"} aria-pressed={powered} onClick={togglePower}><Power /></Button>
+          <Button type="button" variant="outline" className="power" size="icon" title={powered ? "إيقاف التلفزيون" : "تشغيل التلفزيون"} aria-label={powered ? "إيقاف التلفزيون" : "تشغيل التلفزيون"} aria-pressed={powered} onClick={togglePower}><Power /></Button>
           <span className={`power-status${powered ? " is-on" : ""}`}>{powered ? "يعمل" : "متوقف"}</span>
         </div>
         <div className="console-divider" />
