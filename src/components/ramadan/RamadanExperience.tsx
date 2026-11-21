@@ -39,14 +39,14 @@ import televisionRoom from "@/assets/ramadan-tv-room.png";
 
 type Section = "tv" | "channels" | "guide" | "archive" | "favorites" | "about";
 
-const NAV_ITEMS: { id: Section; label: string; to: string }[] = [
+const NAV_ITEMS = [
   { id: "tv", label: "التلفزيون", to: "/" },
   { id: "channels", label: "القنوات", to: "/channels" },
   { id: "guide", label: "دليل البرامج", to: "/guide" },
   { id: "archive", label: "أرشيف الذكريات", to: "/archive" },
   { id: "favorites", label: "المفضّلة", to: "/favorites" },
   { id: "about", label: "عن المشروع", to: "/about" },
-];
+] as const satisfies { id: Section; label: string; to: "/" | "/channels" | "/guide" | "/archive" | "/favorites" | "/about" }[];
 
 const readFavorites = (): string[] => {
   if (typeof window === "undefined") return [];
@@ -60,12 +60,16 @@ const readFavorites = (): string[] => {
 
 function useFavorites() {
   const [favoriteIds, setFavoriteIds] = useState<string[]>([]);
-  useEffect(() => setFavoriteIds(readFavorites()), []);
+  const [favoritesLoaded, setFavoritesLoaded] = useState(false);
   useEffect(() => {
-    if (typeof window !== "undefined") {
+    setFavoriteIds(readFavorites());
+    setFavoritesLoaded(true);
+  }, []);
+  useEffect(() => {
+    if (favoritesLoaded && typeof window !== "undefined") {
       window.localStorage.setItem("ramadan-tv-favorites", JSON.stringify(favoriteIds));
     }
-  }, [favoriteIds]);
+  }, [favoriteIds, favoritesLoaded]);
 
   const toggleFavorite = (id: string) => {
     setFavoriteIds((current) =>
@@ -189,6 +193,8 @@ function TelevisionExperience({ channelIndex, setChannelIndex }: { channelIndex:
   const screenRef = useRef<HTMLDivElement>(null);
   const channel = CHANNELS[channelIndex];
 
+  if (!channel) return null;
+
   const moveChannel = (direction: number) => {
     setChannelIndex((channelIndex + direction + CHANNELS.length) % CHANNELS.length);
     setPowered(true);
@@ -295,11 +301,11 @@ function TelevisionPage({ channelIndex, setChannelIndex }: { channelIndex: numbe
       </div>
       <div className="channel-strip">
         {CHANNELS.map((channel, index) => (
-          <button type="button" key={channel.id} className={`channel-tile${index === channelIndex ? " is-selected" : ""}`} onClick={() => setChannelIndex(index)}>
+          <Button type="button" variant="ghost" key={channel.id} className={`channel-tile h-auto justify-start whitespace-normal${index === channelIndex ? " is-selected" : ""}`} onClick={() => setChannelIndex(index)}>
             <span className="channel-tile-icon"><ChannelMark icon={channel.icon} /></span>
             <span className="channel-tile-copy"><small>قناة {channel.number}</small><strong>{channel.name}</strong><span>{channel.category}</span></span>
             <ChevronLeft size={16} className="channel-tile-arrow" />
-          </button>
+          </Button>
         ))}
       </div>
       <section className="home-archive-prompt">
@@ -334,24 +340,26 @@ function ChannelsPage({ channelIndex, setChannelIndex }: { channelIndex: number;
 }
 
 function GuidePage({ channelIndex, setChannelIndex }: { channelIndex: number; setChannelIndex: (value: number) => void }) {
-  const [activeChannelId, setActiveChannelId] = useState(CHANNELS[channelIndex]?.id ?? CHANNELS[0].id);
+  const initialChannelId = CHANNELS[channelIndex]?.id ?? CHANNELS[0]?.id ?? "";
+  const [activeChannelId, setActiveChannelId] = useState(initialChannelId);
   const guidePrograms = useMemo(() => {
     const schedule = SCHEDULES.find((entry) => entry.channelId === activeChannelId);
     return PROGRAMS.filter((program) => schedule?.programIds.includes(program.id));
   }, [activeChannelId]);
   const activeChannel = CHANNELS.find((channel) => channel.id === activeChannelId) ?? CHANNELS[0];
+  if (!activeChannel) return null;
   return (
     <main className="content-view" dir="rtl">
       <SectionHeading eyebrow="رفوف من الذاكرة" title="دليل البرامج" description="تصفّح عناوين مقترحة حسب القناة. هذا الدليل ليس جدول بث حيّاً." />
       <div className="guide-disclaimer"><Info size={18} /><span>عرض تجريبي — ترتيب للتصفح فقط، وليس موعداً أو جدولاً للبث.</span></div>
       <div className="guide-layout">
         <div className="guide-channel-list" aria-label="اختيار قناة الدليل">
-          {CHANNELS.map((channel) => <button key={channel.id} type="button" className={`guide-channel${activeChannelId === channel.id ? " is-active" : ""}`} onClick={() => { setActiveChannelId(channel.id); setChannelIndex(CHANNELS.findIndex((item) => item.id === channel.id)); }}><span>{channel.number}</span><strong>{channel.name}</strong><ChevronLeft size={15} /></button>)}
+          {CHANNELS.map((channel) => <Button key={channel.id} type="button" variant="ghost" className={`guide-channel h-auto justify-start whitespace-normal${activeChannelId === channel.id ? " is-active" : ""}`} onClick={() => { setActiveChannelId(channel.id); setChannelIndex(CHANNELS.findIndex((item) => item.id === channel.id)); }}><span>{channel.number}</span><strong>{channel.name}</strong><ChevronLeft size={15} /></Button>)}
         </div>
         <section className="guide-schedule" aria-live="polite">
           <div className="guide-schedule-head"><div><span className="eyebrow">قناة {activeChannel.number}</span><h2>{activeChannel.name}</h2></div><span className="guide-sample-mark"><Sparkles size={15} /> قائمة تجريبية</span></div>
           <p className="guide-sample-caption">عناوين نموذجية من مجموعة {activeChannel.category}، بلا أوقات بث.</p>
-          {guidePrograms.map((program, index) => <button key={program.id} type="button" className="guide-row" onClick={() => setChannelIndex(CHANNELS.findIndex((item) => item.id === program.channelId))}><span className="guide-row-number">{String(index + 1).padStart(2, "0")}</span><div><strong>{program.title}</strong><span>{program.description}</span></div><span className="guide-row-era">{program.era}</span><ChevronLeft size={17} /></button>)}
+          {guidePrograms.map((program, index) => <Button key={program.id} type="button" variant="ghost" className="guide-row h-auto justify-start whitespace-normal" onClick={() => setChannelIndex(CHANNELS.findIndex((item) => item.id === program.channelId))}><span className="guide-row-number">{String(index + 1).padStart(2, "0")}</span><div><strong>{program.title}</strong><span>{program.description}</span></div><span className="guide-row-era">{program.era}</span><ChevronLeft size={17} /></Button>)}
         </section>
       </div>
     </main>
