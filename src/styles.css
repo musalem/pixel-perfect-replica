@@ -141,7 +141,7 @@
 .console-channel-name { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
 .console-channel-name > span { display: grid; width: 27px; height: 27px; place-items: center; border: 1px solid color-mix(in oklab, var(--gold) 50%, transparent); border-radius: 3px; color: var(--gold); font-size: 12px; }
 .console-channel-name strong { font: 700 15px "Amiri", serif; }
-.console-button-pair { display: none; gap: 4px; }
+.console-button-pair { display: flex; gap: 4px; }
 .console-button-pair .outline, .volume-controls .outline { width: 28px; height: 28px; border-radius: 3px; }
 .console-divider { height: 43px; width: 1px; background: color-mix(in oklab, var(--border) 90%, transparent); }
 .console-power { display: flex; align-items: center; flex-direction: column; min-width: 49px; }
@@ -282,7 +282,6 @@
   .tv-console { flex-wrap: wrap; gap: 10px; padding: 12px; }
   .console-channel { flex: 1; min-width: 120px; }
   .console-channel-name strong { font-size: 13px; }
-  .console-button-pair { display: flex; }
   .console-power { min-width: 43px; }
   .console-divider:nth-of-type(1) { display: none; }
   .console-volume { min-width: 132px; }
