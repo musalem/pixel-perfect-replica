@@ -35,7 +35,7 @@ import {
   type Program,
 } from "@/data/ramadan-tv";
 
-import televisionRoom from "@/assets/ramadan-tv-room.png";
+import televisionRoom from "@/assets/ramadan-tv-room.webp";
 
 type Section = "tv" | "channels" | "guide" | "archive" | "favorites" | "about";
 
