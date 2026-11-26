@@ -1,24 +1,84 @@
-# Pixel Perfect Replica
+# رمضان زمان — تلفزيون الحكايات الرمضانية
 
-Implement exactly the screenshot and nothing else
+واجهة ويب عربية (من اليمين إلى اليسار) تستعيد أجواء أمسيات رمضان أمام التلفزيون المصري، بتلفزيون خشبي قديم وقنوات افتراضية.
 
-This project was built with [Lovable](https://lovable.dev).
+> **تنبيه:** كل القنوات والعناوين الحالية تجريبية. لا يتضمن المشروع تسجيلات أو فيديوهات، ولا يعرض بثاً حياً أو مواعيد بث حقيقية.
 
-## Build with Lovable
+## المميزات
 
-Continue developing this project in the [Lovable editor](https://lovable.dev/projects/0c3383ce-6461-4fe2-9c86-d01d6662eb46).
+- **التلفزيون:** تشغيل وإيقاف، تنقل بين القنوات، معلومات القناة، ملء الشاشة، تأثير الشاشة القديمة، ورسالة ترحيب.
+- **أزرار الصوت:** تغيّر مؤشر المستوى والكتم على الشاشة فقط، فلا يوجد صوت في النسخة الحالية.
+- **القنوات:** ست قنوات: الدراما، الفوازير، الأطفال، الإعلانات، المنوعات، الطرب والذكريات.
+- **دليل البرامج:** قوائم تصفح حسب القناة.
+- **أرشيف الذكريات:** بحث بالنص، وتصفية حسب الفترة (الثمانينيات، التسعينيات، بداية الألفينات) والقناة.
+- **المفضّلة:** تُحفظ في `localStorage` على جهاز الزائر.
 
-- **Ship faster**: describe what you want to build and Lovable handles the code.
-- **Stay in sync**: every change made in Lovable is committed straight to this repository.
-- **Full ownership**: this code is yours. Push to `main` on GitHub and your changes sync back into Lovable, ready for your next prompt.
+## الصفحات
 
-## Development
+| المسار | الصفحة |
+|---|---|
+| `/` | التلفزيون |
+| `/channels` | القنوات |
+| `/guide` | دليل البرامج |
+| `/archive` | أرشيف الذكريات |
+| `/favorites` | المفضّلة |
+| `/about` | عن المشروع |
 
-Prefer working locally? You need Node.js and npm — [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating).
+## التقنيات
+
+React 19، TypeScript، TanStack Start وTanStack Router، Vite 8، Tailwind CSS 4، مكونات Radix UI، أيقونات Lucide، وVitest للاختبارات.
+
+المشروع في هذه المرحلة يعتمد على بيانات محلية، دون قاعدة بيانات. الخطان Cairo وAmiri يُحمّلان من Google Fonts.
+
+## التشغيل محلياً
+
+تحتاج إلى Node.js (الإصدار 20.19 أو أحدث من فرع 20، أو 22.12 فما فوق) وnpm.
 
 ```sh
-git clone <this-repository-url>
-cd <repository-name>
+git clone https://github.com/musalem/pixel-perfect-replica.git
+cd pixel-perfect-replica
 npm i
 npm run dev
 ```
+
+افتح العنوان الذي يظهر في الطرفية.
+
+| الأمر | الوظيفة |
+|---|---|
+| `npm run dev` | تشغيل خادم التطوير |
+| `npm run build` | بناء نسخة الإنتاج |
+| `npm run preview` | معاينة نسخة الإنتاج |
+| `npm test` | تشغيل الاختبارات |
+| `npm run lint` | فحص الكود |
+| `npm run format` | تنسيق الملفات |
+
+## بنية المشروع
+
+```text
+src/
+├── components/
+│   ├── ramadan/
+│   │   ├── RamadanExperience.tsx   # واجهة الصفحات والتلفزيون
+│   │   └── ChannelSelection.tsx    # القناة المختارة المشتركة بين الصفحات
+│   └── ui/                         # مكونات الواجهة العامة
+├── data/ramadan-tv.ts              # القنوات والبرامج والدليل ودالة التصفية
+├── routes/                         # ملف لكل صفحة، و__root.tsx للهيكل العام
+├── assets/                         # الصور
+├── test/                           # اختبارات البيانات والتنقل
+└── styles.css                      # التنسيقات
+```
+
+## إضافة محتوى
+
+- **برنامج جديد:** أضف عنصراً إلى `PROGRAMS` في `src/data/ramadan-tv.ts`. يظهر في الأرشيف، وفي دليل القناة المحددة في `channelId`.
+- **قناة جديدة:** أضف عنصراً إلى `CHANNELS`. حقل `icon` يقبل القيم المعرّفة في `Channel`. وحدّث عنوان "قنواتنا الست" والاختبار الذي يتوقع ست قنوات.
+- **تسجيلات حقيقية:** النسخة الحالية لا تحتوي على مشغّل فيديو، وأنواع البيانات تسمح بحالة `demo` فقط. إضافة التسجيلات تتطلب توسيع الأنواع وبناء المشغّل وتحديث الاختبارات. لا تُضف إلا محتوى لديك تصريح باستخدامه.
+
+## العمل مع Lovable
+
+المشروع متصل بـ [Lovable](https://lovable.dev)، ويمكن متابعة تطويره من [محرر Lovable](https://lovable.dev/projects/0c3383ce-6461-4fe2-9c86-d01d6662eb46). التعديلات المرفوعة إلى الفرع المتصل تتزامن مع المحرر، لذلك:
+
+- حافظ على الفرع في حالة تعمل.
+- لا تستخدم `force push`، ولا تعدّل التعديلات المنشورة بـ `rebase` أو `amend` أو `squash`.
+
+راجع [AGENTS.md](AGENTS.md) لبقية القواعد.

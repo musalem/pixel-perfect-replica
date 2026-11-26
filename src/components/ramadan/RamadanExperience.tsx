@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useChannelSelection } from "@/components/ramadan/ChannelSelection";
 import {
   CHANNELS,
   ERA_OPTIONS,
@@ -411,7 +412,7 @@ function AboutPage() {
 }
 
 export function RamadanExperience({ section }: { section: Section }) {
-  const [channelIndex, setChannelIndex] = useState(0);
+  const { channelIndex, setChannelIndex } = useChannelSelection();
   const { favoriteIds, toggleFavorite } = useFavorites();
 
   return (
