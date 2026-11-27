@@ -9,11 +9,6 @@ export interface Channel {
   icon: "drama" | "fawazeer" | "kids" | "ads" | "variety" | "music";
 }
 
-export interface VideoSource {
-  url: string;
-  kind: "authorized";
-}
-
 export interface Program {
   id: string;
   channelId: string;
@@ -22,9 +17,6 @@ export interface Program {
   category: string;
   era: HistoricalEra;
   originalYear: null;
-  availability: "demo";
-  source: VideoSource | null;
-  rightsNote: string;
 }
 
 export interface ScheduleEntry {
@@ -91,21 +83,19 @@ export const CHANNELS: Channel[] = [
   },
 ];
 
-const demoNote = "عنصر توضيحي فقط؛ لا يتضمن تسجيلاً أو مصدراً للبث.";
-
 export const PROGRAMS: Program[] = [
-  { id: "drama-80", channelId: "drama", title: "حكاية من دراما زمان", description: "بطاقة تجريبية لأرشيف الدراما المصرية الرمضانية.", category: "دراما", era: "الثمانينيات", originalYear: null, availability: "demo", source: null, rightsNote: demoNote },
-  { id: "drama-90", channelId: "drama", title: "سهرة درامية عائلية", description: "عنوان نموذجي لتجربة تصفح الأعمال الدرامية.", category: "دراما", era: "التسعينيات", originalYear: null, availability: "demo", source: null, rightsNote: demoNote },
-  { id: "fawazeer-80", channelId: "fawazeer", title: "فقرة من الفوازير", description: "بطاقة توضيحية لفئة الفوازير والاستعراضات الرمضانية.", category: "فوازير", era: "الثمانينيات", originalYear: null, availability: "demo", source: null, rightsNote: demoNote },
-  { id: "fawazeer-90", channelId: "fawazeer", title: "لغز الليلة", description: "عنوان تجريبي لتجربة مجموعة الفوازير.", category: "فوازير", era: "التسعينيات", originalYear: null, availability: "demo", source: null, rightsNote: demoNote },
-  { id: "kids-90", channelId: "kids", title: "حكاية للصغار", description: "بطاقة نموذجية لمحتوى الأطفال والرسوم المصرية.", category: "أطفال", era: "التسعينيات", originalYear: null, availability: "demo", source: null, rightsNote: demoNote },
-  { id: "kids-2000", channelId: "kids", title: "مغامرة بعد الإفطار", description: "عنوان تجريبي لرفوف ذكريات الطفولة.", category: "أطفال", era: "بداية الألفينات", originalYear: null, availability: "demo", source: null, rightsNote: demoNote },
-  { id: "ads-80", channelId: "ads", title: "أغنية إعلانية من الذاكرة", description: "بطاقة توضيحية لفئة الإعلانات الرمضانية القديمة.", category: "إعلانات", era: "الثمانينيات", originalYear: null, availability: "demo", source: null, rightsNote: demoNote },
-  { id: "ads-90", channelId: "ads", title: "فاصل رمضاني قصير", description: "عنوان نموذجي لقسم الفواصل والأغنيات القصيرة.", category: "إعلانات", era: "التسعينيات", originalYear: null, availability: "demo", source: null, rightsNote: demoNote },
-  { id: "variety-90", channelId: "variety", title: "مسابقة السهرة", description: "بطاقة تجريبية لمسابقات وبرامج المنوعات.", category: "منوعات", era: "التسعينيات", originalYear: null, availability: "demo", source: null, rightsNote: demoNote },
-  { id: "variety-2000", channelId: "variety", title: "لقاء على مائدة رمضان", description: "عنوان نموذجي لتجربة تصفح المنوعات.", category: "منوعات", era: "بداية الألفينات", originalYear: null, availability: "demo", source: null, rightsNote: demoNote },
-  { id: "music-80", channelId: "music", title: "أنشودة من ليالي رمضان", description: "بطاقة توضيحية لفئة الأناشيد والابتهالات.", category: "طرب وإنشاد", era: "الثمانينيات", originalYear: null, availability: "demo", source: null, rightsNote: demoNote },
-  { id: "music-2000", channelId: "music", title: "نغمات وذكريات", description: "عنوان تجريبي لقسم الموسيقى والذكريات.", category: "طرب وإنشاد", era: "بداية الألفينات", originalYear: null, availability: "demo", source: null, rightsNote: demoNote },
+  { id: "drama-80", channelId: "drama", title: "حكاية من دراما زمان", description: "بطاقة تجريبية لأرشيف الدراما المصرية الرمضانية.", category: "دراما", era: "الثمانينيات", originalYear: null },
+  { id: "drama-90", channelId: "drama", title: "سهرة درامية عائلية", description: "عنوان نموذجي لتجربة تصفح الأعمال الدرامية.", category: "دراما", era: "التسعينيات", originalYear: null },
+  { id: "fawazeer-80", channelId: "fawazeer", title: "فقرة من الفوازير", description: "بطاقة توضيحية لفئة الفوازير والاستعراضات الرمضانية.", category: "فوازير", era: "الثمانينيات", originalYear: null },
+  { id: "fawazeer-90", channelId: "fawazeer", title: "لغز الليلة", description: "عنوان تجريبي لتجربة مجموعة الفوازير.", category: "فوازير", era: "التسعينيات", originalYear: null },
+  { id: "kids-90", channelId: "kids", title: "حكاية للصغار", description: "بطاقة نموذجية لمحتوى الأطفال والرسوم المصرية.", category: "أطفال", era: "التسعينيات", originalYear: null },
+  { id: "kids-2000", channelId: "kids", title: "مغامرة بعد الإفطار", description: "عنوان تجريبي لرفوف ذكريات الطفولة.", category: "أطفال", era: "بداية الألفينات", originalYear: null },
+  { id: "ads-80", channelId: "ads", title: "أغنية إعلانية من الذاكرة", description: "بطاقة توضيحية لفئة الإعلانات الرمضانية القديمة.", category: "إعلانات", era: "الثمانينيات", originalYear: null },
+  { id: "ads-90", channelId: "ads", title: "فاصل رمضاني قصير", description: "عنوان نموذجي لقسم الفواصل والأغنيات القصيرة.", category: "إعلانات", era: "التسعينيات", originalYear: null },
+  { id: "variety-90", channelId: "variety", title: "مسابقة السهرة", description: "بطاقة تجريبية لمسابقات وبرامج المنوعات.", category: "منوعات", era: "التسعينيات", originalYear: null },
+  { id: "variety-2000", channelId: "variety", title: "لقاء على مائدة رمضان", description: "عنوان نموذجي لتجربة تصفح المنوعات.", category: "منوعات", era: "بداية الألفينات", originalYear: null },
+  { id: "music-80", channelId: "music", title: "أنشودة من ليالي رمضان", description: "بطاقة توضيحية لفئة الأناشيد والابتهالات.", category: "طرب وإنشاد", era: "الثمانينيات", originalYear: null },
+  { id: "music-2000", channelId: "music", title: "نغمات وذكريات", description: "عنوان تجريبي لقسم الموسيقى والذكريات.", category: "طرب وإنشاد", era: "بداية الألفينات", originalYear: null },
 ];
 
 // The guide is an illustrative browsing order, not a real or current broadcast schedule.
