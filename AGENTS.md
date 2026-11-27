@@ -31,3 +31,5 @@ use the editor.
 
 ## Project architecture
 - Keep the Ramadan TV first release frontend-only: structured channel, program, and schedule data live separately from the interactive experience, while browser storage holds visitor preferences; this keeps demo content replaceable without introducing backend setup.
+- Keep channel, program, and TV power selection in a root-level context so route changes preserve the viewing session.
+- Store all program video URLs in `src/data/videos.ts` and keep URL validation and playback separate from catalog metadata so authorized media can be maintained safely.
