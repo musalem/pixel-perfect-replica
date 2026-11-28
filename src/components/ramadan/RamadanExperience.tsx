@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import {
   Bookmark,
   Check,
@@ -34,6 +34,9 @@ import {
   type HistoricalEra,
   type Program,
 } from "@/data/ramadan-tv";
+import { useChannelSelection } from "@/components/ramadan/ChannelSelection";
+import { VideoPlayer } from "@/components/ramadan/VideoPlayer";
+import { getProgramStatusNote, getProgramVideoSource, getProgramVideoStatus } from "@/lib/video";
 
 import televisionRoom from "@/assets/ramadan-tv-room.webp";
 
@@ -148,13 +151,14 @@ function EraSelect({ value, onChange }: { value: HistoricalEra | "all"; onChange
   );
 }
 
-function ProgramCard({ program, favorite, onFavorite, compact = false }: { program: Program; favorite: boolean; onFavorite: () => void; compact?: boolean }) {
+function ProgramCard({ program, favorite, onFavorite, onWatch, compact = false }: { program: Program; favorite: boolean; onFavorite: () => void; onWatch: () => void; compact?: boolean }) {
   const channel = CHANNELS.find((item) => item.id === program.channelId);
+  const status = getProgramVideoStatus(program.id);
   return (
     <article className={`program-card${compact ? " program-card-compact" : ""}`} dir="rtl">
       <div className="program-art">
         <img src={televisionRoom} alt="رسم لبيت مصري هادئ وتلفزيون قديم وفانوس مضيء" loading="lazy" />
-        <span className="demo-ribbon">عينة توضيحية</span>
+        <span className={`demo-ribbon status-${status}`}>{status === "available" ? "متاح للمشاهدة" : status === "invalid" ? "رابط غير صالح" : "عينة توضيحية"}</span>
         <Button
           type="button"
           size="icon"
@@ -171,7 +175,8 @@ function ProgramCard({ program, favorite, onFavorite, compact = false }: { progr
         <div className="program-meta"><span>{channel?.name ?? program.category}</span><span>{program.era}</span></div>
         <h3>{program.title}</h3>
         {!compact && <p>{program.description}</p>}
-        <div className="availability-note"><Info size={14} /><span>{program.rightsNote}</span></div>
+        <div className="availability-note"><Info size={14} /><span>{getProgramStatusNote(status)}</span></div>
+        {status === "available" && <Button type="button" variant="outline" className="program-watch-button" onClick={onWatch}><Tv size={15} /> شاهد</Button>}
       </div>
     </article>
   );
@@ -183,25 +188,35 @@ function ChannelMark({ icon }: { icon: Channel["icon"] }) {
   return <Icon size={21} strokeWidth={1.6} aria-hidden="true" />;
 }
 
-function TelevisionExperience({ channelIndex, setChannelIndex }: { channelIndex: number; setChannelIndex: (value: number) => void }) {
-  const [powered, setPowered] = useState(false);
+function TelevisionExperience() {
+  const { selectedChannelId, selectedProgramId, selectChannel, selectProgram, tvPoweredOn, setTvPoweredOn } = useChannelSelection();
+  const [volume, setVolume] = useState(4);
+  const [muted, setMuted] = useState(false);
   const [volume, setVolume] = useState(4);
   const [muted, setMuted] = useState(false);
   const [infoVisible, setInfoVisible] = useState(true);
   const [effectsEnabled, setEffectsEnabled] = useState(true);
   const [messageVisible, setMessageVisible] = useState(false);
+  const [screenCanFitVideo, setScreenCanFitVideo] = useState(false);
   const screenRef = useRef<HTMLDivElement>(null);
-  const channel = CHANNELS[channelIndex];
+  const glassRef = useRef<HTMLDivElement>(null);
+  const channel = CHANNELS.find((item) => item.id === selectedChannelId);
+  const selectedProgram = PROGRAMS.find((item) => item.id === selectedProgramId && item.channelId === selectedChannelId);
+  const videoSource = selectedProgram ? getProgramVideoSource(selectedProgram.id) : null;
+  const channelVideoPrograms = PROGRAMS.filter((program) => program.channelId === selectedChannelId && getProgramVideoStatus(program.id) === "available");
 
   if (!channel) return null;
 
   const moveChannel = (direction: number) => {
-    setChannelIndex((channelIndex + direction + CHANNELS.length) % CHANNELS.length);
-    setPowered(true);
+    const currentIndex = CHANNELS.findIndex((item) => item.id === selectedChannelId);
+    const nextChannel = CHANNELS[(currentIndex + direction + CHANNELS.length) % CHANNELS.length];
+    if (nextChannel) selectChannel(nextChannel.id);
+    setTvPoweredOn(true);
+    setMessageVisible(false);
     setInfoVisible(true);
   };
   const togglePower = () => {
-    setPowered((value) => !value);
+    setTvPoweredOn(!tvPoweredOn);
     setMessageVisible(false);
   };
   const enterFullscreen = async () => {
@@ -213,34 +228,71 @@ function TelevisionExperience({ channelIndex, setChannelIndex }: { channelIndex:
     }
   };
 
+  useEffect(() => {
+    const glass = glassRef.current;
+    if (!glass || typeof ResizeObserver === "undefined") return;
+    const updateFit = () => {
+      const { width, height } = glass.getBoundingClientRect();
+      setScreenCanFitVideo(width >= 200 && height >= 200);
+    };
+    const observer = new ResizeObserver(updateFit);
+    observer.observe(glass);
+    updateFit();
+    return () => observer.disconnect();
+  }, []);
+
+  const playerIsVisible = tvPoweredOn && !messageVisible && videoSource !== null;
+  const showPlayerInside = playerIsVisible && screenCanFitVideo;
+  const showPlayerBelow = playerIsVisible && !screenCanFitVideo;
+  const showScreenEffects = effectsEnabled && !(showPlayerInside && videoSource?.kind === "youtube");
+  const status = selectedProgram ? getProgramVideoStatus(selectedProgram.id) : null;
+  const screenStatus = status === "available"
+    ? showPlayerBelow ? "المشاهدة أسفل التلفزيون" : showPlayerInside ? "المشاهدة داخل التلفزيون" : "جاهز للمشاهدة"
+    : status === "invalid" ? getProgramStatusNote(status)
+    : selectedProgram ? getProgramStatusNote("demo") : "اختر عنواناً من دليل الذكريات.";
+
   return (
     <section className="tv-experience" dir="rtl" aria-label="تجربة التلفزيون">
       <div className="tv-scene">
         <div className="scene-ornament ornament-one"><Moon size={25} /></div>
         <div className="scene-ornament ornament-two"><Lamp size={25} /></div>
-        <div className="tv-artwork-wrap" ref={screenRef}>
-          <img className="tv-room-art" src={televisionRoom} alt="تلفزيون خشبي قديم في غرفة مصرية مزينة بفانوس رمضان" />
-          <div className={`crt-screen${powered ? " is-powered" : ""}${effectsEnabled ? " has-effects" : ""}`}>
-            {powered ? (
-              <>
-                {effectsEnabled && <span className="crt-scanlines" aria-hidden="true" />}
-                {messageVisible ? (
+        <div className="tv-artwork-stage" ref={screenRef}>
+          <div className="tv-artwork-wrap">
+            <img className="tv-room-art" src={televisionRoom} alt="تلفزيون خشبي قديم في غرفة مصرية مزينة بفانوس رمضان" />
+            <div ref={glassRef} className={`crt-screen${tvPoweredOn ? " is-powered" : ""}${showScreenEffects ? " has-effects" : ""}`}>
+              {tvPoweredOn ? (
+                messageVisible ? (
                   <div className="crt-message"><Sparkles size={25} /><strong>أهلاً بيكم</strong><span>رمضان زمان… حكايات بتجمعنا</span><Button variant="outline" size="sm" onClick={() => setMessageVisible(false)}>مشاهدة القناة</Button></div>
+                ) : showPlayerInside && videoSource ? (
+                  <>
+                    {effectsEnabled && videoSource.kind === "mp4" && <span className="crt-scanlines" aria-hidden="true" />}
+                    <div className="crt-player-inset"><VideoPlayer source={videoSource} volume={volume} muted={muted} placement="screen" /></div>
+                    {effectsEnabled && videoSource.kind === "mp4" && <span className="screen-vignette" aria-hidden="true" />}
+                  </>
                 ) : (
-                  <div className="crt-channel-content">
-                    {infoVisible && <><span className="screen-channel-id">قناة رقم {channel.number}</span><div className="screen-on-label"><span className="screen-live-dot" /> شاشة أرشيفية تجريبية</div><strong>{channel.name}</strong><span className="screen-screening-label">لا يوجد تسجيل معتمد للعرض حالياً</span><span className="screen-category">{channel.category}</span></>}
-                    {!infoVisible && <Button variant="outline" size="sm" onClick={() => setInfoVisible(true)}>عرض معلومات القناة</Button>}
-                  </div>
-                )}
-                <span className="screen-vignette" aria-hidden="true" />
-              </>
-            ) : (
-              <div className="crt-off"><span className="off-indicator" /><small>للبدء… شغّل التلفزيون</small></div>
-            )}
+                  <>
+                    {effectsEnabled && <span className="crt-scanlines" aria-hidden="true" />}
+                    <div className="crt-channel-content">
+                      {infoVisible ? <><span className="screen-channel-id">قناة رقم {channel.number}</span><div className="screen-on-label"><span className="screen-live-dot" /> شاشة أرشيفية</div><strong>{selectedProgram?.title ?? channel.name}</strong><span className="screen-screening-label">{screenStatus}</span><span className="screen-category">{channel.category}</span></> : <Button variant="outline" size="sm" onClick={() => setInfoVisible(true)}>عرض معلومات القناة</Button>}
+                    </div>
+                    <span className="screen-vignette" aria-hidden="true" />
+                  </>
+                )
+              ) : (
+                <div className="crt-off"><span className="off-indicator" /><small>للبدء… شغّل التلفزيون</small></div>
+              )}
+            </div>
           </div>
         </div>
         <div className="ambient-caption"><span className="ambient-rule" /> <span>من ذكريات التلفزيون المصري</span> <span className="ambient-rule" /></div>
       </div>
+
+      {showPlayerBelow && videoSource && (
+        <section className="external-player-panel" aria-label="مشاهدة البرنامج" dir="rtl">
+          <div className="external-player-heading"><strong>{selectedProgram?.title}</strong><span>المشاهدة على شاشة أكبر</span></div>
+          <VideoPlayer source={videoSource} volume={volume} muted={muted} placement="external" />
+        </section>
+      )}
 
       <div className="tv-console" aria-label="أزرار التلفزيون">
         <div className="console-channel">
@@ -254,8 +306,8 @@ function TelevisionExperience({ channelIndex, setChannelIndex }: { channelIndex:
         <div className="console-divider" />
         <div className="console-power">
           <span className="console-label">التشغيل</span>
-          <Button type="button" variant="outline" className="power" size="icon" title={powered ? "إيقاف التلفزيون" : "تشغيل التلفزيون"} aria-label={powered ? "إيقاف التلفزيون" : "تشغيل التلفزيون"} aria-pressed={powered} onClick={togglePower}><Power /></Button>
-          <span className={`power-status${powered ? " is-on" : ""}`}>{powered ? "يعمل" : "متوقف"}</span>
+          <Button type="button" variant="outline" className="power" size="icon" title={tvPoweredOn ? "إيقاف التلفزيون" : "تشغيل التلفزيون"} aria-label={tvPoweredOn ? "إيقاف التلفزيون" : "تشغيل التلفزيون"} aria-pressed={tvPoweredOn} onClick={togglePower}><Power /></Button>
+          <span className={`power-status${tvPoweredOn ? " is-on" : ""}`}>{tvPoweredOn ? "يعمل" : "متوقف"}</span>
         </div>
         <div className="console-divider" />
         <div className="console-volume">
@@ -274,19 +326,22 @@ function TelevisionExperience({ channelIndex, setChannelIndex }: { channelIndex:
           <Button type="button" variant="ghost" size="icon" title="معلومات القناة" aria-label="معلومات القناة" aria-pressed={infoVisible} onClick={() => setInfoVisible((current) => !current)}><Info /></Button>
           <Button type="button" variant="ghost" size="icon" title="العرض الكامل" aria-label="العرض الكامل" onClick={() => void enterFullscreen()}><Maximize /></Button>
           <Button type="button" variant="ghost" size="icon" title={effectsEnabled ? "إيقاف تأثير الشاشة" : "تشغيل تأثير الشاشة"} aria-label={effectsEnabled ? "إيقاف تأثير الشاشة" : "تشغيل تأثير الشاشة"} aria-pressed={effectsEnabled} onClick={() => setEffectsEnabled((current) => !current)}><Sparkles /></Button>
-          <Button type="button" variant="ghost" size="icon" title="الترحيب" aria-label="رسالة ترحيب" onClick={() => { setPowered(true); setMessageVisible(true); }}><Moon /></Button>
+          <Button type="button" variant="ghost" size="icon" title="الترحيب" aria-label="رسالة ترحيب" onClick={() => { setTvPoweredOn(true); setMessageVisible(true); }}><Moon /></Button>
         </div>
       </div>
       <div className="channel-now" aria-live="polite">
         <div className="now-indicator"><span className="screen-live-dot" /> <span>على الشاشة</span></div>
-        <div><span className="now-channel">{channel.number} / {channel.name}</span><p>لا يتوفر تسجيل معتمد حالياً؛ هذه قناة تجريبية لاستعراض التجربة.</p></div>
+        <div><span className="now-channel">{channel.number} / {channel.name}</span><p>{selectedProgram ? `${selectedProgram.title} — ${getProgramStatusNote(status ?? "demo")}` : "اختر عنواناً من دليل الذكريات لمشاهدة حالته."}</p>
+          {channelVideoPrograms.length > 1 && <label className="program-picker">اختر مادة القناة<select aria-label="اختر مادة القناة" value={selectedProgramId ?? ""} onChange={(event) => { selectProgram(event.target.value); setTvPoweredOn(true); setMessageVisible(false); }}><option value="" disabled>اختر عنواناً</option>{channelVideoPrograms.map((program) => <option key={program.id} value={program.id}>{program.title}</option>)}</select></label>}
+        </div>
         <Link to="/guide" className="text-link">تصفّح دليل الذكريات <ChevronLeft size={15} /></Link>
       </div>
     </section>
   );
 }
 
-function TelevisionPage({ channelIndex, setChannelIndex }: { channelIndex: number; setChannelIndex: (value: number) => void }) {
+function TelevisionPage() {
+  const { selectedChannelId, selectChannel } = useChannelSelection();
   return (
     <main className="home-view" dir="rtl">
       <div className="home-intro">
@@ -294,14 +349,14 @@ function TelevisionPage({ channelIndex, setChannelIndex }: { channelIndex: numbe
         <h1>افتح التلفزيون... <em>ورجّع أيام زمان</em></h1>
         <p>لمة العيلة، صوت التترات، ورمضان اللي ساكن في قلوبنا.</p>
       </div>
-      <TelevisionExperience channelIndex={channelIndex} setChannelIndex={setChannelIndex} />
+      <TelevisionExperience />
       <div className="channel-strip-heading">
         <div><span className="eyebrow">اختار حكايتك</span><h2>قنوات من زمن جميل</h2></div>
         <Link to="/channels" className="text-link">كل القنوات <ChevronLeft size={15} /></Link>
       </div>
       <div className="channel-strip">
-        {CHANNELS.map((channel, index) => (
-          <Button type="button" variant="ghost" key={channel.id} className={`channel-tile h-auto justify-start whitespace-normal${index === channelIndex ? " is-selected" : ""}`} onClick={() => setChannelIndex(index)}>
+        {CHANNELS.map((channel) => (
+          <Button type="button" variant="ghost" key={channel.id} className={`channel-tile h-auto justify-start whitespace-normal${channel.id === selectedChannelId ? " is-selected" : ""}`} onClick={() => selectChannel(channel.id)}>
             <span className="channel-tile-icon"><ChannelMark icon={channel.icon} /></span>
             <span className="channel-tile-copy"><small>قناة {channel.number}</small><strong>{channel.name}</strong><span>{channel.category}</span></span>
             <ChevronLeft size={16} className="channel-tile-arrow" />
@@ -317,20 +372,21 @@ function TelevisionPage({ channelIndex, setChannelIndex }: { channelIndex: numbe
   );
 }
 
-function ChannelsPage({ channelIndex, setChannelIndex }: { channelIndex: number; setChannelIndex: (value: number) => void }) {
+function ChannelsPage() {
+  const { selectedChannelId, selectChannel } = useChannelSelection();
   return (
     <main className="content-view" dir="rtl">
-      <SectionHeading eyebrow="محطات من ليالي زمان" title="قنواتنا الست" description="كل قناة لها حكاية ونكهة خاصة. المحتوى هنا توضيحي إلى أن تتوفر تسجيلات موثّقة ومصرّح بها." />
+      <SectionHeading eyebrow="محطات من ليالي زمان" title="قنواتنا الست" description="كل قناة لها حكاية ونكهة خاصة. تظهر حالة المشاهدة لكل عنوان بحسب المواد المرتبطة به." />
       <div className="channel-grid">
-        {CHANNELS.map((channel, index) => (
-          <article key={channel.id} className={`channel-card${index === channelIndex ? " is-selected" : ""}`}>
+        {CHANNELS.map((channel) => (
+          <article key={channel.id} className={`channel-card${channel.id === selectedChannelId ? " is-selected" : ""}`}>
             <span className="channel-card-number">{channel.number}</span>
             <div className="channel-card-icon"><ChannelMark icon={channel.icon} /></div>
             <span className="eyebrow">{channel.category}</span>
             <h2>{channel.name}</h2>
             <p>{channel.description}</p>
-            <Button variant={index === channelIndex ? "default" : "outline"} onClick={() => setChannelIndex(index)}>
-              <Tv size={16} /> {index === channelIndex ? "القناة المختارة" : "اختيار القناة"}
+            <Button variant={channel.id === selectedChannelId ? "default" : "outline"} onClick={() => selectChannel(channel.id)}>
+              <Tv size={16} /> {channel.id === selectedChannelId ? "القناة المختارة" : "اختيار القناة"}
             </Button>
           </article>
         ))}
@@ -339,8 +395,10 @@ function ChannelsPage({ channelIndex, setChannelIndex }: { channelIndex: number;
   );
 }
 
-function GuidePage({ channelIndex, setChannelIndex }: { channelIndex: number; setChannelIndex: (value: number) => void }) {
-  const initialChannelId = CHANNELS[channelIndex]?.id ?? CHANNELS[0]?.id ?? "";
+function GuidePage() {
+  const { selectedChannelId, selectChannel, tuneProgram } = useChannelSelection();
+  const navigate = useNavigate();
+  const initialChannelId = selectedChannelId || CHANNELS[0]?.id || "";
   const [activeChannelId, setActiveChannelId] = useState(initialChannelId);
   const guidePrograms = useMemo(() => {
     const schedule = SCHEDULES.find((entry) => entry.channelId === activeChannelId);
@@ -354,43 +412,43 @@ function GuidePage({ channelIndex, setChannelIndex }: { channelIndex: number; se
       <div className="guide-disclaimer"><Info size={18} /><span>عرض تجريبي — ترتيب للتصفح فقط، وليس موعداً أو جدولاً للبث.</span></div>
       <div className="guide-layout">
         <div className="guide-channel-list" aria-label="اختيار قناة الدليل">
-          {CHANNELS.map((channel) => <Button key={channel.id} type="button" variant="ghost" className={`guide-channel h-auto justify-start whitespace-normal${activeChannelId === channel.id ? " is-active" : ""}`} onClick={() => { setActiveChannelId(channel.id); setChannelIndex(CHANNELS.findIndex((item) => item.id === channel.id)); }}><span>{channel.number}</span><strong>{channel.name}</strong><ChevronLeft size={15} /></Button>)}
+          {CHANNELS.map((channel) => <Button key={channel.id} type="button" variant="ghost" className={`guide-channel h-auto justify-start whitespace-normal${activeChannelId === channel.id ? " is-active" : ""}`} onClick={() => { setActiveChannelId(channel.id); selectChannel(channel.id); }}><span>{channel.number}</span><strong>{channel.name}</strong><ChevronLeft size={15} /></Button>)}
         </div>
         <section className="guide-schedule" aria-live="polite">
           <div className="guide-schedule-head"><div><span className="eyebrow">قناة {activeChannel.number}</span><h2>{activeChannel.name}</h2></div><span className="guide-sample-mark"><Sparkles size={15} /> قائمة تجريبية</span></div>
           <p className="guide-sample-caption">عناوين نموذجية من مجموعة {activeChannel.category}، بلا أوقات بث.</p>
-          {guidePrograms.map((program, index) => <Button key={program.id} type="button" variant="ghost" className="guide-row h-auto justify-start whitespace-normal" onClick={() => setChannelIndex(CHANNELS.findIndex((item) => item.id === program.channelId))}><span className="guide-row-number">{String(index + 1).padStart(2, "0")}</span><div><strong>{program.title}</strong><span>{program.description}</span></div><span className="guide-row-era">{program.era}</span><ChevronLeft size={17} /></Button>)}
+          {guidePrograms.map((program, index) => <Button key={program.id} type="button" variant="ghost" className="guide-row h-auto justify-start whitespace-normal" onClick={() => { tuneProgram(program.id); void navigate({ to: "/" }); }}><span className="guide-row-number">{String(index + 1).padStart(2, "0")}</span><div><strong>{program.title}</strong><span>{getProgramStatusNote(getProgramVideoStatus(program.id))}</span></div><span className="guide-row-era">{program.era}</span><ChevronLeft size={17} /></Button>)}
         </section>
       </div>
     </main>
   );
 }
 
-function ArchivePage({ favoriteIds, toggleFavorite }: { favoriteIds: string[]; toggleFavorite: (id: string) => void }) {
+function ArchivePage({ favoriteIds, toggleFavorite, onWatch }: { favoriteIds: string[]; toggleFavorite: (id: string) => void; onWatch: (programId: string) => void }) {
   const [era, setEra] = useState<HistoricalEra | "all">("all");
   const [channelId, setChannelId] = useState<string | "all">("all");
   const [query, setQuery] = useState("");
   const filtered = useMemo(() => filterPrograms(PROGRAMS, era, channelId, query), [era, channelId, query]);
   return (
     <main className="content-view" dir="rtl">
-      <SectionHeading eyebrow="ذاكرة بتتفتح على مهل" title="أرشيف الذكريات" description="فتّش بين عناوين توضيحية، واختار الفترة والقناة اللي بتحبها." />
+      <SectionHeading eyebrow="ذاكرة بتتفتح على مهل" title="أرشيف الذكريات" description="فتّش بين العناوين حسب الفترة والقناة، وشاهد ما أضيف إليه رابط صالح." />
       <div className="archive-toolbar">
         <label className="search-control"><Search size={18} /><Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="دوّر على عنوان أو حكاية..." aria-label="البحث في الأرشيف" /><Button type="button" variant="ghost" size="icon" aria-label="مسح البحث" onClick={() => setQuery("")}><X size={17} /></Button></label>
         <EraSelect value={era} onChange={setEra} />
         <label className="select-wrap channel-filter"><Tv size={16} /><select aria-label="اختر قناة الأرشيف" value={channelId} onChange={(event) => setChannelId(event.target.value)}><option value="all">كل القنوات</option>{CHANNELS.map((channel) => <option key={channel.id} value={channel.id}>{channel.name}</option>)}</select><ChevronDown size={14} /></label>
       </div>
-      <div className="archive-results-label"><span>{filtered.length} من الذكريات</span><span className="archive-demo-note"><Info size={14} /> كل العناصر الحالية تجريبية</span></div>
-      {filtered.length ? <div className="program-grid">{filtered.map((program) => <ProgramCard key={program.id} program={program} favorite={favoriteIds.includes(program.id)} onFavorite={() => toggleFavorite(program.id)} />)}</div> : <div className="empty-state"><Search size={25} /><h2>ما لقيناش نتيجة</h2><p>جرّب كلمة تانية أو غيّر اختيار الفترة والقناة.</p><Button variant="outline" onClick={() => { setQuery(""); setEra("all"); setChannelId("all"); }}>عرض الأرشيف كله</Button></div>}
+      <div className="archive-results-label"><span>{filtered.length} من الذكريات</span><span className="archive-demo-note"><Info size={14} /> {filtered.filter((program) => getProgramVideoStatus(program.id) === "available").length} عنوان متاح للمشاهدة</span></div>
+      {filtered.length ? <div className="program-grid">{filtered.map((program) => <ProgramCard key={program.id} program={program} favorite={favoriteIds.includes(program.id)} onFavorite={() => toggleFavorite(program.id)} onWatch={() => onWatch(program.id)} />)}</div> : <div className="empty-state"><Search size={25} /><h2>ما لقيناش نتيجة</h2><p>جرّب كلمة تانية أو غيّر اختيار الفترة والقناة.</p><Button variant="outline" onClick={() => { setQuery(""); setEra("all"); setChannelId("all"); }}>عرض الأرشيف كله</Button></div>}
     </main>
   );
 }
 
-function FavoritesPage({ favoriteIds, toggleFavorite }: { favoriteIds: string[]; toggleFavorite: (id: string) => void }) {
+function FavoritesPage({ favoriteIds, toggleFavorite, onWatch }: { favoriteIds: string[]; toggleFavorite: (id: string) => void; onWatch: (programId: string) => void }) {
   const favorites = PROGRAMS.filter((program) => favoriteIds.includes(program.id));
   return (
     <main className="content-view" dir="rtl">
       <SectionHeading eyebrow="حاجات بنحب نرجعلها" title="المفضّلة" description="ذكرياتك المختارة تفضل محفوظة على جهازك." />
-      {favorites.length ? <div className="program-grid">{favorites.map((program) => <ProgramCard key={program.id} program={program} favorite onFavorite={() => toggleFavorite(program.id)} />)}</div> : <div className="empty-state"><Bookmark size={25} /><h2>لسه ما اخترتش حاجة</h2><p>احفظ العناوين اللي تحب ترجع لها من أرشيف الذكريات.</p><Link to="/archive" className="text-link">روح للأرشيف <ChevronLeft size={15} /></Link></div>}
+      {favorites.length ? <div className="program-grid">{favorites.map((program) => <ProgramCard key={program.id} program={program} favorite onFavorite={() => toggleFavorite(program.id)} onWatch={() => onWatch(program.id)} />)}</div> : <div className="empty-state"><Bookmark size={25} /><h2>لسه ما اخترتش حاجة</h2><p>احفظ العناوين اللي تحب ترجع لها من أرشيف الذكريات.</p><Link to="/archive" className="text-link">روح للأرشيف <ChevronLeft size={15} /></Link></div>}
     </main>
   );
 }
@@ -401,28 +459,33 @@ function AboutPage() {
       <SectionHeading eyebrow="حكاية المشروع" title="لمة واحدة… وذكريات كتير" description="رمضان زمان مساحة رقمية تحتفي بإحساس أمسيات التلفزيون المصري في الثمانينيات والتسعينيات وبدايات الألفينات." />
       <section className="about-illustration"><img src={televisionRoom} alt="تلفزيون قديم وفانوس رمضان في بيت مصري دافئ" /></section>
       <div className="about-copy">
-        <article><span className="about-number">01</span><h2>التلفزيون في قلب البيت</h2><p>تجربة تفاعلية تستلهم التلفزيون الخشبي، جلسات العيلة، وفانوس رمضان — من غير ما تدّعي عرض تسجيلات غير متاحة.</p></article>
-        <article><span className="about-number">02</span><h2>أرشيف يحترم الذاكرة والحقوق</h2><p>المعروض حالياً بيانات تجريبية. لا توجد فيديوهات أو تسجيلات متاحة حتى يُضاف محتوى موثّق ومصرّح باستخدامه.</p></article>
+        <article><span className="about-number">01</span><h2>التلفزيون في قلب البيت</h2><p>تجربة تفاعلية تستلهم التلفزيون الخشبي، جلسات العيلة، وفانوس رمضان؛ لكل عنوان حالة مشاهدة واضحة.</p></article>
+        <article><span className="about-number">02</span><h2>أرشيف يحترم الذاكرة والحقوق</h2><p>العنوان الذي لا يرتبط برابط مشاهدة يظل عينة توضيحية، وتُضاف المواد بعد التحقق من صلاحية استخدامها.</p></article>
         <article><span className="about-number">03</span><h2>حكايات تتّسع مع الوقت</h2><p>القنوات والفترات والعناوين مفصولة ومنظمة لتستقبل مواد أرشيفية جديدة كلما توفرت معلومات ومصادر معتمدة.</p></article>
       </div>
-      <div className="about-footer-note"><Check size={17} /> لا تسجيلات أو مواعيد بث حقيقية ضمن النسخة الحالية.</div>
+      <div className="about-footer-note"><Check size={17} /> الدليل ترتيب للتصفح وليس مواعيد بث حقيقية.</div>
     </main>
   );
 }
 
 export function RamadanExperience({ section }: { section: Section }) {
-  const [channelIndex, setChannelIndex] = useState(0);
   const { favoriteIds, toggleFavorite } = useFavorites();
+  const { tuneProgram } = useChannelSelection();
+  const navigate = useNavigate();
+  const watchProgram = (programId: string) => {
+    tuneProgram(programId);
+    void navigate({ to: "/" });
+  };
 
   return (
     <div className="app-shell">
       <div className="page-grain" aria-hidden="true" />
       <SiteHeader section={section} favoriteCount={favoriteIds.length} />
-      {section === "tv" && <TelevisionPage channelIndex={channelIndex} setChannelIndex={setChannelIndex} />}
-      {section === "channels" && <ChannelsPage channelIndex={channelIndex} setChannelIndex={setChannelIndex} />}
-      {section === "guide" && <GuidePage channelIndex={channelIndex} setChannelIndex={setChannelIndex} />}
-      {section === "archive" && <ArchivePage favoriteIds={favoriteIds} toggleFavorite={toggleFavorite} />}
-      {section === "favorites" && <FavoritesPage favoriteIds={favoriteIds} toggleFavorite={toggleFavorite} />}
+      {section === "tv" && <TelevisionPage />}
+      {section === "channels" && <ChannelsPage />}
+      {section === "guide" && <GuidePage />}
+      {section === "archive" && <ArchivePage favoriteIds={favoriteIds} toggleFavorite={toggleFavorite} onWatch={watchProgram} />}
+      {section === "favorites" && <FavoritesPage favoriteIds={favoriteIds} toggleFavorite={toggleFavorite} onWatch={watchProgram} />}
       {section === "about" && <AboutPage />}
       <footer className="site-footer" dir="rtl"><span>رمضان زمان</span><span>حكايات من نور شاشة قديمة <Lamp size={15} /></span><span>كل الحقوق محفوظة لأصحابها</span></footer>
     </div>
